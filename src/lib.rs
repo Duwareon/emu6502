@@ -65,6 +65,13 @@ impl CPU {
         return data;
     }
 
+    pub fn lexec(&mut self, mem: &mut MEM, mut cycles: u32) {
+        while cycles > 0 {
+            self.exec(mem);
+            cycles-=1;
+        }
+    }
+
     pub fn exec(&mut self, mem: &mut MEM) {
         let inst = self.get_next(mem);
         match inst {
@@ -87,7 +94,7 @@ impl CPU {
             }
 
             _ => {
-                print!("BAD OPCODE!")
+                println!("BAD OPCODE!")
             }
         }
     }
