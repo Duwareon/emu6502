@@ -93,6 +93,8 @@ impl CPU {
                 mem.set(addr as u16, self.a);
             }
 
+            0xEA => {} // NOP
+
             _ => {
                 println!("BAD OPCODE!")
             }
@@ -111,6 +113,7 @@ impl MEM {
         newmem.init();
         return newmem;
     }
+
     pub fn init(&mut self) {
         self.ram = [0; 0xFFFF]
     }

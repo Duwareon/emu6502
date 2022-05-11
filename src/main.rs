@@ -19,8 +19,9 @@ fn main() {
     memory.set(0xFF03, 0x20);
     memory.set(0xFF04, 0x85); //STA $A3
     memory.set(0xFF05, 0xA3);
+    memory.set(0xFF06, 0xEA); //NOP
 
-    cpu.lexec(&mut memory, 3);
+    cpu.lexec(&mut memory, 4);
 
     println!("{:x}", memory.get(0xA3));
 }
