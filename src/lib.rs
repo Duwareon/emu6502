@@ -48,7 +48,7 @@ impl CPU {
         self.y = 0;
     }
 
-    pub fn new( mem: &mut MEM) -> CPU {
+    pub fn new(mem: &mut MEM) -> CPU {
         let mut newcpu = CPU {pc: 0, sp: 0, sr: 0, a: 0, x: 0, y: 0};
         newcpu.reset(mem);
         return newcpu;
@@ -73,7 +73,9 @@ impl CPU {
     }
 
     pub fn exec(&mut self, mem: &mut MEM) {
+        let loc = self.pc;
         let inst = self.get_next(mem);
+        
         match inst {
             0xA9 => { //LDA #
                 let val = self.get_next(mem);
@@ -93,10 +95,10 @@ impl CPU {
                 mem.set(addr as u16, self.a);
             }
 
-            0xEA => {} // NOP
+            0xEA => {} //NOP
 
             _ => {
-                println!("BAD OPCODE!")
+                println!("BAD OPCODE: 0x{:02x}, ADDR: 0x{:04x}", inst, loc)
             }
         }
     }
@@ -124,6 +126,12 @@ impl MEM {
 
     pub fn set(&mut self, addr: u16, val: u8) {
         self.ram[addr as usize] = val
+    }
+
+    pub fn setrange(&mut self, addr: u16, vals: &Vec<u8>) {
+        for (i, v) in vals.iter().enumerate() {
+            self.set(addr + (i as u16), *v);
+        }
     }
 }
 
