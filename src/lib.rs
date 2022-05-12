@@ -1,3 +1,5 @@
+use std::process::exit;
+
 pub trait Bit {
     fn get_bit(&self, bit: u8) -> bool;
     fn set_bit(&mut self, bit: u8) -> Self;
@@ -77,6 +79,10 @@ impl CPU {
         let inst = self.get_next(mem);
         
         match inst {
+            0x00 => { //BRK
+                exit(self.get_next(mem) as i32);
+            }
+
             0x0A => { //ASL A
                 if self.a.get_bit(7){
                     self.sr.set_bit(0);
@@ -134,17 +140,49 @@ impl CPU {
                 mem.set(addr as u16, self.a);
             }
 
+            0x88 => { //DEY
+                self.y -= 1;
+            }
+
+            0x8A => { //TXA
+                self.a = self.x;
+            }
+
+            0x98 => { //TYA
+                self.a = self.y;
+            }
+
+            0xA8 => { //TAY
+                self.y = self.a;
+            }
+
             0xA9 => { //LDA #
                 let val = self.get_next(mem);
                 self.a = val;
+            }
+
+            0xAA => { //TAX
+                self.x = self.a;
             }
 
             0xB8 => { //CLV
                 self.sr.unset_bit(6);
             }
 
+            0xC8 => { //INY
+                self.y += 1;
+            }
+
+            0xCA => { //DEX
+                self.x -= 1;
+            }
+
             0xD8 => { //CLD
                 self.sr.unset_bit(4);
+            }
+
+            0xE8 => { //INX
+                self.x += 1;
             }
 
             0xEA => {} //NOP

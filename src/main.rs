@@ -5,7 +5,7 @@ use lib::MEM;
 fn main() {
     let mut memory = MEM::new();
     
-    memory.setrom(0xFFFC, 0x00);
+    memory.setrom(0xFFFC, 0x00); // Tell the 6502 where to find the code
     memory.setrom(0xFFFD, 0xFF);
     memory.set(0xff40, 27); // Error test
 
