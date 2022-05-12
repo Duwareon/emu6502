@@ -77,17 +77,56 @@ impl CPU {
         let inst = self.get_next(mem);
         
         match inst {
-            0xA9 => { //LDA #
-                let val = self.get_next(mem);
-                self.a = val;
+            0x0A => { //ASL A
+                if self.a.get_bit(7){
+                    self.sr.set_bit(0);
+                }
+                else{
+                    self.sr.unset_bit(0);
+                }
+                self.a = self.a << 1;
+            }
+
+            0x18 => { //CLC
+                self.sr.unset_bit(0);
+            }
+
+            0x38 => { //SEC
+                self.sr.set_bit(0);
+            }
+
+            0x58 => { //CLI
+                self.sr.unset_bit(2);
+            }
+
+            0x65 => { //ADC ZP
+                let addr = self.get_next(mem);
+                let val = mem.get(addr as u16);
+                let result = self.a as u16 + val as u16;
+
+                if result.get_bit(8) {
+                    self.sr.set_bit(0);
+                    self.a = result as u8;
+                }
+                else {
+                    self.a = self.a + val;
+                }
             }
 
             0x69 => { //ADC #
                 let val = self.get_next(mem);
-                self.a = self.a + val;
-                if (self.a as u16 + val as u16).get_bit(8) {
+                let result = self.a as u16 + val as u16;
+                if result.get_bit(8) {
                     self.sr.set_bit(0);
+                    self.a = result as u8;
                 }
+                else {
+                    self.a = self.a + val;
+                }
+            }
+
+            0x78 => { //SEI
+                self.sr.set_bit(2);
             }
 
             0x85 => { //STA zp
@@ -95,9 +134,26 @@ impl CPU {
                 mem.set(addr as u16, self.a);
             }
 
+            0xA9 => { //LDA #
+                let val = self.get_next(mem);
+                self.a = val;
+            }
+
+            0xB8 => { //CLV
+                self.sr.unset_bit(6);
+            }
+
+            0xD8 => { //CLD
+                self.sr.unset_bit(4);
+            }
+
             0xEA => {} //NOP
 
-            _ => {
+            0xF8 => { //SED
+                self.sr.set_bit(4);
+            }
+
+            _ => { //UNRECOGNIZED
                 println!("BAD OPCODE: 0x{:02x}, ADDR: 0x{:04x}", inst, loc)
             }
         }
@@ -125,12 +181,27 @@ impl MEM {
     }
 
     pub fn set(&mut self, addr: u16, val: u8) {
+        if addr < 0xff00 {
+            self.ram[addr as usize] = val
+        }
+        else {
+            println!("ERROR: ATTEMPT TO SET ROM TO 0x{:02x} AT 0x {:04x}!", val, addr)
+        }
+    }
+
+    pub fn setrom(&mut self, addr: u16, val: u8) {
         self.ram[addr as usize] = val
     }
 
     pub fn setrange(&mut self, addr: u16, vals: &Vec<u8>) {
         for (i, v) in vals.iter().enumerate() {
             self.set(addr + (i as u16), *v);
+        }
+    }
+
+    pub fn setromrange(&mut self, addr: u16, vals: &Vec<u8>) {
+        for (i, v) in vals.iter().enumerate() {
+            self.setrom(addr + (i as u16), *v);
         }
     }
 }
