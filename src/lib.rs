@@ -156,11 +156,9 @@ impl CPU {
 
                 if result.get_bit(8) {
                     self.sr.set_bit(0);
-                    self.a = result as i8;
                 }
-                else {
-                    self.a = self.a + val;
-                }
+                self.a = result as i8;
+
             }
 
             0x68 => { //PLA
@@ -168,15 +166,14 @@ impl CPU {
             }
 
             0x69 => { //ADC #
-                let val = self.get_next(mem) as i8;
-                let result = self.a as i16 + val as i16;
+                let val = 0b0000000011111111 & (self.get_next(mem) as u16);
+                let acc = 0b0000000011111111 & (self.a as u16);
+                let result = (acc+val) as i16;
+            
                 if result.get_bit(8) {
-                    self.sr.set_bit(0);
-                    self.a = result as i8;
+                    self.sr = self.sr.set_bit(0);
                 }
-                else {
-                    self.a = self.a + val;
-                }
+                self.a = result as i8;
             }
 
             0x78 => { //SEI
@@ -290,3 +287,44 @@ impl MEM {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use std::ptr::eq;
+
+    use super::*;
+
+    #[test]
+    fn test_add() {
+        let mut memory = MEM::new();
+        memory.setrange(0xFFFC, &vec![0x00, 0xFF], true);
+        memory.setrange(0xFF00, &vec![
+            0xA9, 0x03, //LDA #$03
+            0x69, 0x07, //ADC #$04
+            0x85, 0xA3, //STA $A3
+        ], true);
+
+        let mut cpu = CPU::new(&mut memory);
+        cpu.lexec(&mut memory, 3);
+
+        assert_eq!(memory.get(0xA3), 0x0A);
+    }
+
+    #[test]
+    fn test_add_carry() {
+        let mut memory = MEM::new();
+        memory.setrange(0xFFFC, &vec![0x00, 0xFF], true);
+        memory.setrange(0xFF00, &vec![
+            0xA9, 0xFF, //LDA #$FF
+            0x69, 0x02, //ADC #$02
+            0x85, 0xA3, //STA $A3
+        ], true);
+
+        let mut cpu = CPU::new(&mut memory);
+        println!("{:08b}", cpu.sr);
+        cpu.lexec(&mut memory, 3);
+        println!("{:08b}", cpu.sr);
+
+        assert!(cpu.sr.get_bit(0));
+        assert_eq!(cpu.a, 1);
+    }
+}
