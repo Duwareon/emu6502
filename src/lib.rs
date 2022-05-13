@@ -18,6 +18,18 @@ impl Bit for u8 {
     }
 }
 
+impl Bit for i8 {
+    fn get_bit(&self, bit: u8) -> bool {
+        return ((self >> bit) & 1) != 0
+    }
+    fn set_bit(&mut self, bit: u8) -> Self {
+        return *self | 0b00000001 << bit
+    }
+    fn unset_bit(&mut self, bit: u8) -> Self {
+        return *self & (0b11111110 << bit) as i8
+    }
+}
+
 impl Bit for u16 {
     fn get_bit(&self, bit: u8) -> bool {
         return ((self >> bit) & 1) != 0
@@ -30,14 +42,27 @@ impl Bit for u16 {
     }
 }
 
+impl Bit for i16 {
+    fn get_bit(&self, bit: u8) -> bool {
+        return ((self >> bit) & 1) != 0
+    }
+    fn set_bit(&mut self, bit: u8) -> Self {
+        return *self | 0b0000000000000001 << bit
+    }
+    fn unset_bit(&mut self, bit: u8) -> Self {
+        return *self & (0b1111111111111110  << bit) as i16
+    }
+}
+
 pub struct CPU {
     pc: u16, //Program Counter, should look at $FFFC and $FFFD for start location
     sp: u8,  //Stack Pointer, inits to $FD and gets 100 added to its value when used
+                                                  //76543210
     sr: u8,  //Status Register, each bit is a flag, NV-BDIZC
 
-    a: u8, //Registers
-    x: u8,
-    y: u8,
+    a: i8, //Registers
+    x: i8,
+    y: i8,
 }
 
 impl CPU {
@@ -56,8 +81,15 @@ impl CPU {
         return newcpu;
     }
 
-    fn get_sp(&mut self, mem: &mut MEM) -> u8 {
+    fn push(&mut self, mem: &mut MEM, val: u8) {
         let addr: u16 = (self.sp as u16) + 0x100;
+        mem.set(addr, val, true);
+        self.sp -= 1;
+    }
+
+    fn pull(&mut self, mem: &mut MEM) -> u8 {
+        let addr: u16 = (self.sp as u16) + 0x100;
+        self.sp += 1;
         return mem.get(addr);
     }
 
@@ -83,6 +115,10 @@ impl CPU {
                 exit(self.get_next(mem) as i32);
             }
 
+            0x08 => { //PHP
+                self.push(mem, self.sr)
+            }
+
             0x0A => { //ASL A
                 if self.a.get_bit(7){
                     self.sr.set_bit(0);
@@ -97,8 +133,16 @@ impl CPU {
                 self.sr.unset_bit(0);
             }
 
+            0x28 => { //PLP
+                self.sr = self.pull(mem)
+            }
+
             0x38 => { //SEC
                 self.sr.set_bit(0);
+            }
+
+            0x48 => { //PHA
+                self.push(mem, self.a as u8);
             }
 
             0x58 => { //CLI
@@ -107,24 +151,28 @@ impl CPU {
 
             0x65 => { //ADC ZP
                 let addr = self.get_next(mem);
-                let val = mem.get(addr as u16);
-                let result = self.a as u16 + val as u16;
+                let val = mem.get(addr as u16) as i8;
+                let result = self.a as i16 + val as i16;
 
                 if result.get_bit(8) {
                     self.sr.set_bit(0);
-                    self.a = result as u8;
+                    self.a = result as i8;
                 }
                 else {
                     self.a = self.a + val;
                 }
             }
 
+            0x68 => { //PLA
+                self.a = self.pull(mem) as i8;
+            }
+
             0x69 => { //ADC #
-                let val = self.get_next(mem);
-                let result = self.a as u16 + val as u16;
+                let val = self.get_next(mem) as i8;
+                let result = self.a as i16 + val as i16;
                 if result.get_bit(8) {
                     self.sr.set_bit(0);
-                    self.a = result as u8;
+                    self.a = result as i8;
                 }
                 else {
                     self.a = self.a + val;
@@ -137,7 +185,7 @@ impl CPU {
 
             0x85 => { //STA zp
                 let addr = self.get_next(mem);
-                mem.set(addr as u16, self.a);
+                mem.set(addr as u16, self.a as u8, false);
             }
 
             0x88 => { //DEY
@@ -152,12 +200,16 @@ impl CPU {
                 self.a = self.y;
             }
 
+            0x9A => { //TXS
+                self.push(mem, self.x as u8);
+            }
+
             0xA8 => { //TAY
                 self.y = self.a;
             }
 
             0xA9 => { //LDA #
-                let val = self.get_next(mem);
+                let val = self.get_next(mem) as i8;
                 self.a = val;
             }
 
@@ -167,6 +219,10 @@ impl CPU {
 
             0xB8 => { //CLV
                 self.sr.unset_bit(6);
+            }
+
+            0xBA => { //TSX
+                self.x = self.pull(mem) as i8
             }
 
             0xC8 => { //INY
@@ -218,28 +274,18 @@ impl MEM {
         return self.ram[addr as usize]
     }
 
-    pub fn set(&mut self, addr: u16, val: u8) {
-        if addr < 0xff00 {
+    pub fn set(&mut self, addr: u16, val: u8, rom: bool) {
+        if ((addr < 0xff00) & (addr < 0xff || addr > 0x1ff)) || rom {
             self.ram[addr as usize] = val
         }
         else {
-            println!("ERROR: ATTEMPT TO SET ROM TO 0x{:02x} AT 0x {:04x}!", val, addr)
+            println!("ERROR: ATTEMPT TO SET ROM/STACK TO 0x{:02x} AT 0x{:04x}!", val, addr)
         }
     }
 
-    pub fn setrom(&mut self, addr: u16, val: u8) {
-        self.ram[addr as usize] = val
-    }
-
-    pub fn setrange(&mut self, addr: u16, vals: &Vec<u8>) {
+    pub fn setrange(&mut self, addr: u16, vals: &Vec<u8>, rom: bool) {
         for (i, v) in vals.iter().enumerate() {
-            self.set(addr + (i as u16), *v);
-        }
-    }
-
-    pub fn setromrange(&mut self, addr: u16, vals: &Vec<u8>) {
-        for (i, v) in vals.iter().enumerate() {
-            self.setrom(addr + (i as u16), *v);
+            self.set(addr + (i as u16), *v, rom);
         }
     }
 }
