@@ -180,9 +180,19 @@ impl CPU {
                 self.sr.set_bit(2);
             }
 
+            0x84 => { //STY zp
+                let addr = self.get_next(mem) as u16;
+                mem.set(addr, self.y as u8, false);
+            }
+
             0x85 => { //STA zp
-                let addr = self.get_next(mem);
-                mem.set(addr as u16, self.a as u8, false);
+                let addr = self.get_next(mem) as u16;
+                mem.set(addr, self.a as u8, false);
+            }
+
+            0x86 => { //STX zp
+                let addr = self.get_next(mem) as u16;
+                mem.set(addr, self.x as u8, false);
             }
 
             0x88 => { //DEY
@@ -212,6 +222,12 @@ impl CPU {
 
             0xAA => { //TAX
                 self.x = self.a;
+                if self.x.get_bit(7) {
+                    self.sr.set_bit(7);
+                }
+                else {
+                    self.sr.unset_bit(7);
+                }
             }
 
             0xB8 => { //CLV
