@@ -289,8 +289,6 @@ impl MEM {
 
 #[cfg(test)]
 mod tests {
-    use std::ptr::eq;
-
     use super::*;
 
     #[test]
