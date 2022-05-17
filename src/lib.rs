@@ -1,5 +1,4 @@
 use std::process::exit;
-
 pub trait Bit {
     fn get_bit(&self, bit: u8) -> bool;
     fn set_bit(&mut self, bit: u8) -> Self;
@@ -112,6 +111,7 @@ impl CPU {
         
         match inst {
             0x00 => { //BRK
+                self.sr.set_bit(4);
                 exit(self.get_next(mem) as i32);
             }
 
@@ -126,7 +126,14 @@ impl CPU {
                 else{
                     self.sr.unset_bit(0);
                 }
-                self.a = self.a << 1;
+
+                if self.a == 0 {
+                    self.sr.set_bit(1);
+                }
+                else if self.a < 0 {
+                    self.sr.set_bit(7);
+                }
+                self.a = (self.a << 1).unset_bit(0);
             }
 
             0x18 => { //CLC
@@ -143,6 +150,19 @@ impl CPU {
 
             0x48 => { //PHA
                 self.push(mem, self.a as u8);
+
+                if self.a == 0 {
+                    self.sr.set_bit(1);
+                }
+                else if self.a < 0 {
+                    self.sr.set_bit(7);
+                }
+            }
+
+            0x4C => { //JMP a
+                let addr1 = self.get_next(mem);
+                let addr2 = self.get_next(mem);
+                self.pc = addr1 as u16 + (addr2 as u16)*0x100;
             }
 
             0x58 => { //CLI
@@ -157,12 +177,19 @@ impl CPU {
                 if result.get_bit(8) {
                     self.sr.set_bit(0);
                 }
-                self.a = result as i8;
 
+                self.a = result as i8;
             }
 
             0x68 => { //PLA
                 self.a = self.pull(mem) as i8;
+
+                if self.a == 0 {
+                    self.sr.set_bit(0);
+                }
+                else if self.a < 0 {
+                    self.sr.set_bit(7);
+                }
             }
 
             0x69 => { //ADC #
@@ -174,6 +201,23 @@ impl CPU {
                     self.sr = self.sr.set_bit(0);
                 }
                 self.a = result as i8;
+
+                if self.a == 0 {
+                    self.sr.set_bit(1);
+                }
+                else if self.a < 0 {
+                    self.sr.set_bit(7);
+                }
+            }
+
+            0x6C => { //JMP (a)
+                let addr1 = self.get_next(mem);
+                let addr2 = self.get_next(mem);
+                self.pc = addr1 as u16 + (addr2 as u16)*0x100;
+
+                let addr1 = self.get_next(mem);
+                let addr2 = self.get_next(mem);
+                self.pc = addr1 as u16 + (addr2 as u16)*0x100;
             }
 
             0x78 => { //SEI
@@ -197,14 +241,35 @@ impl CPU {
 
             0x88 => { //DEY
                 self.y -= 1;
+
+                if self.a == 0 {
+                    self.sr.set_bit(1);
+                }
+                else if self.a < 0 {
+                    self.sr.set_bit(7);
+                }
             }
 
             0x8A => { //TXA
                 self.a = self.x;
+
+                if self.a == 0 {
+                    self.sr.set_bit(1);
+                }
+                else if self.a < 0 {
+                    self.sr.set_bit(7);
+                }
             }
 
             0x98 => { //TYA
                 self.a = self.y;
+
+                if self.a == 0 {
+                    self.sr.set_bit(1);
+                }
+                else if self.a < 0 {
+                    self.sr.set_bit(7);
+                }
             }
 
             0x9A => { //TXS
@@ -213,6 +278,13 @@ impl CPU {
 
             0xA8 => { //TAY
                 self.y = self.a;
+
+                if self.y == 0 {
+                    self.sr.set_bit(1);
+                }
+                else if self.y < 0 {
+                    self.sr.set_bit(7);
+                }
             }
 
             0xA9 => { //LDA #
@@ -222,11 +294,12 @@ impl CPU {
 
             0xAA => { //TAX
                 self.x = self.a;
-                if self.x.get_bit(7) {
-                    self.sr.set_bit(7);
+
+                if self.x == 0 {
+                    self.sr.set_bit(1);
                 }
-                else {
-                    self.sr.unset_bit(7);
+                else if self.x < 0 {
+                    self.sr.set_bit(7);
                 }
             }
 
@@ -235,15 +308,36 @@ impl CPU {
             }
 
             0xBA => { //TSX
-                self.x = self.pull(mem) as i8
+                self.x = self.pull(mem) as i8;
+
+                if self.x == 0 {
+                    self.sr.set_bit(1);
+                }
+                else if self.x < 0 {
+                    self.sr.set_bit(7);
+                }
             }
 
             0xC8 => { //INY
                 self.y += 1;
+
+                if self.y == 0 {
+                    self.sr.set_bit(1);
+                }
+                else if self.y < 0 {
+                    self.sr.set_bit(7);
+                }
             }
 
             0xCA => { //DEX
                 self.x -= 1;
+
+                if self.x == 0 {
+                    self.sr.set_bit(1);
+                }
+                else if self.x < 0 {
+                    self.sr.set_bit(7);
+                }
             }
 
             0xD8 => { //CLD
@@ -252,6 +346,13 @@ impl CPU {
 
             0xE8 => { //INX
                 self.x += 1;
+
+                if self.x == 0 {
+                    self.sr.set_bit(1);
+                }
+                else if self.x < 0 {
+                    self.sr.set_bit(7);
+                }
             }
 
             0xEA => {} //NOP
@@ -340,5 +441,27 @@ mod tests {
 
         assert!(cpu.sr.get_bit(0));
         assert_eq!(cpu.a, 1);
+    }
+
+    #[test]
+    fn test_indirect_jump() {
+        let mut memory = MEM::new();
+        memory.setrange(0xFFFC, &vec![0x00, 0xFF], true);
+        memory.setrange(0xFF00, &vec![
+            0x6C, 0xFF, 0x69, // jmp ($FF69)
+        ], true);
+        memory.setrange(0xFF69, &vec![
+            0xFF, 0xAA, // jmp ($FF69)
+        ], true);
+        memory.setrange(0xFFAA, &vec![
+            0xA9, 0x03, //LDA #$03
+            0x69, 0x07, //ADC #$04
+            0x85, 0xA3, //STA $A3
+        ], true);
+
+        let mut cpu = CPU::new(&mut memory);
+        cpu.lexec(&mut memory, 4);
+
+        assert_eq!(memory.get(0xA3), 0x0A);
     }
 }
