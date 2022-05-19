@@ -368,7 +368,6 @@ impl CPU {
     }
 }
 
-#[derive(Copy, Clone)]
 pub struct MEM {
     ram: [u8; 65535], //$0000 to $00FF is ZP, $0100 to $01FF is stack, $0200 to $FFFF is general purpose.
 }
