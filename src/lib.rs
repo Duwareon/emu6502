@@ -175,10 +175,17 @@ impl CPU {
                 let result = self.a as i16 + val as i16;
 
                 if result.get_bit(8) {
-                    self.sr.set_bit(0);
+                    self.sr = self.sr.set_bit(0);
                 }
 
                 self.a = result as i8;
+
+                if self.a == 0 {
+                    self.sr.set_bit(1);
+                }
+                else if self.a < 0 {
+                    self.sr.set_bit(7);
+                } 
             }
 
             0x68 => { //PLA
@@ -200,6 +207,7 @@ impl CPU {
                 if result.get_bit(8) {
                     self.sr = self.sr.set_bit(0);
                 }
+
                 self.a = result as i8;
 
                 if self.a == 0 {
@@ -218,6 +226,25 @@ impl CPU {
                 let addr1 = self.get_next(mem);
                 let addr2 = self.get_next(mem);
                 self.pc = addr1 as u16 + (addr2 as u16)*0x100;
+            }
+
+            0x6D => { //ADC a
+                let addr1 = self.get_next(mem);
+                let addr2 = self.get_next(mem);
+                let result = self.a + (mem.get(addr1 as u16 + (addr2 as u16)*0x100)) as i8;
+
+                if result.get_bit(8) {
+                    self.sr = self.sr.set_bit(0);
+                }
+
+                self.a = result;
+
+                if self.a == 0 {
+                    self.sr.set_bit(1);
+                }
+                else if self.a < 0 {
+                    self.sr.set_bit(7);
+                }
             }
 
             0x78 => { //SEI
