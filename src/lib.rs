@@ -1,4 +1,3 @@
-use std::process::exit;
 pub trait Bit {
     fn get_bit(&self, bit: u8) -> bool;
     fn set_bit(&mut self, bit: u8) -> Self;
