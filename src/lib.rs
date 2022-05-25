@@ -110,11 +110,6 @@ impl CPU {
         let inst = self.get_next(mem);
         
         match inst {
-            0x00 => { //BRK
-                self.sr.set_bit(4);
-                exit(self.get_next(mem) as i32);
-            }
-
             0x08 => { //PHP
                 self.push(mem, self.sr)
             }
