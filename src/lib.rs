@@ -390,7 +390,7 @@ impl CPU {
 }
 
 pub struct MEM {
-    ram: [u8; 65535], //$0000 to $00FF is ZP, $0100 to $01FF is stack, $0200 to $FFFF is general purpose.
+    ram: [u8; 65535], //$0000 to $00FF is ZP, $0100 to $01FF is stack, $0200 to $FEFF is general purpose, $FF01 to $FFFF is ROM.
 }
 
 impl MEM {
