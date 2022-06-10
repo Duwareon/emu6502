@@ -9,14 +9,12 @@ fn main() {
     let mut cpu = CPU::new(&mut memory);
  
     memory.setrange(0xFF00, &vec![
-        0xA9, 0x03, //LDA #$03
-        0x69, 0x07, //ADC #$04
+        0xA9, 0x07, //LDA #$07
+        0x69, 0xB4, //ADC #$B4
         0x85, 0xA3, //STA $A3
-        0xEA, //NOP
-        //0xff, // Error test
     ], true);
 
-    println!("{:x}", memory.get(0xA3));
-    cpu.lexec(&mut memory, 4);
-    println!("{:x}", memory.get(0xA3) as i8);
+    println!("0x{:02x}", memory.get(0xA3) as i8);
+    cpu.lexec(&mut memory, 3);
+    println!("0x{:02x}", memory.get(0xA3) as i8);
 }
