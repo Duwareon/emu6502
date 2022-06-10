@@ -465,13 +465,14 @@ mod tests {
 
     #[test]
     fn test_indirect_jump() {
+        //TODO: FIX THIS
         let mut memory = MEM::new();
         memory.setrange(0xFFFC, &vec![0x00, 0xFF], true);
         memory.setrange(0xFF00, &vec![
             0x6C, 0xFF, 0x69, // jmp ($FF69)
         ], true);
         memory.setrange(0xFF69, &vec![
-            0xFF, 0xAA, // jmp ($FF69)
+            0xAA, 0xFF, // $FFAA
         ], true);
         memory.setrange(0xFFAA, &vec![
             0xA9, 0x03, //LDA #$03
@@ -480,6 +481,7 @@ mod tests {
         ], true);
 
         let mut cpu = CPU::new(&mut memory);
+        
         cpu.lexec(&mut memory, 4);
 
         assert_eq!(memory.get(0xA3), 0x0A);
