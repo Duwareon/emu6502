@@ -10,8 +10,8 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     // println!("{:?}", args);
-
-    let romfile = load_rom(&args[1]);
+    let path = &args[1];
+    let romfile = load_rom(path);
     let mut rom = [0u8; 0x100];
 
     for i in romfile {
@@ -24,14 +24,15 @@ fn main() {
     //memory.set(0xFFFF, 0xFF, true);
     let mut cpu = CPU::new(&mut memory);
 
-
-    println!("0x{:02x}", memory.get(0xA3) as i8);
-    cpu.lexec(&mut memory, 3);
-    println!("0x{:02x}", memory.get(0xA3) as i8);
+    cpu.fexec(&mut memory);
 }
 
 pub fn load_rom(path: &String) -> Result<[u8; 0x100], Error> {
-    let f = File::open(path)?;
+    let f = File::open(path);
+    if f.is_err(){
+        panic!("ERROR INTAKING FILE")
+    }
+    let f = f?;
     let mut reader = BufReader::new(f);
     let mut buffer1 = Vec::new();
     let mut buffer = [0u8; 0x100];

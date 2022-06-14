@@ -1,3 +1,6 @@
+use std::process::exit;
+
+
 pub trait Bit {
     fn get_bit(&self, bit: u8) -> bool;
     fn set_bit(&mut self, bit: u8) -> Self;
@@ -64,6 +67,7 @@ pub struct CPU {
 }
 
 impl CPU {
+    #![allow(dead_code)]
     pub fn reset(&mut self, mem: &mut MEM) {
         self.pc = mem.get(0xFFFE) as u16 + (mem.get(0xFFFF) as u16)*0x100;
         self.sp = 0xFD;
@@ -104,11 +108,27 @@ impl CPU {
         }
     }
 
+    pub fn fexec(&mut self, mem: &mut MEM) {
+        while self.pc < 0xFFFF {
+            self.exec(mem);
+        }
+    }
+
     pub fn exec(&mut self, mem: &mut MEM) {
         let loc = self.pc;
         let inst = self.get_next(mem);
         
         match inst {
+            0x00 => { //BRK
+                exit(0);
+            }
+            0x01 => { //PRN
+                let addr1 = self.get_next(mem) as u16;
+                let addr2 = self.get_next(mem) as u16;
+                let val = mem.get(addr1 + addr2*0x100);
+                println!("{:02x}", val);
+            }
+
             0x08 => { //PHP
                 self.push(mem, self.sr)
             }
