@@ -65,7 +65,7 @@ pub struct CPU {
 
 impl CPU {
     pub fn reset(&mut self, mem: &mut MEM) {
-        self.pc = mem.get(0xFFFC) as u16 + (mem.get(0xFFFD) as u16)*0x100;
+        self.pc = mem.get(0xFFFE) as u16 + (mem.get(0xFFFF) as u16)*0x100;
         self.sp = 0xFD;
         self.sr = 0b00100000;
         self.a = 0;
@@ -390,28 +390,32 @@ impl CPU {
 }
 
 pub struct MEM {
-    ram: [u8; 0xFFFF], //$0000 to $00FF is ZP, $0100 to $01FF is stack, $0200 to $FEFF is general purpose, $FF01 to $FFFF is ROM.
+    ram: [u8; 0xFFFF+1], //$0000 to $00FF is ZP, $0100 to $01FF is stack, $0200 to $FEFF is general purpose, $FF01 to $FFFF is ROM.
+    //The last two bytes are a word that points to the start of the program
 }
 
 impl MEM {
-    pub fn new(ROM: [u8; 0xFF]) -> MEM {
-        let mut newmem = MEM {ram: [0u8; 0xFFFF]};
+    pub fn new(ROM: [u8; 0x100]) -> MEM {
+        let mut newmem = MEM {ram: [0u8; 0xFFFF+1]};
         newmem.init(ROM);
         return newmem;
     }
 
-    pub fn init(&mut self, ROM: [u8; 0xFF]) {
-        self.ram = [0; 0xFFFF];
+    pub fn init(&mut self, ROM: [u8; 0x100]) {
+        self.ram = [0; 0xFFFF+1];
         self.setrange(0xFF00, &ROM.to_vec(), true)
     }
 
     pub fn get(&mut self, addr: u16) -> u8 {
-        return self.ram[addr as usize];
+        let val = self.ram[addr as usize];
+        // println!("GOT 0x{:04x} AS 0x{:02x}", addr, val);
+        return val;
     }
 
     pub fn set(&mut self, addr: u16, val: u8, rom: bool) {
         if ((addr < 0xff00) & (addr < 0xff || addr > 0x1ff)) || rom {
             self.ram[addr as usize] = val;
+            // println!("SET 0x{:04x} TO 0x{:02x}", addr, val);
         }
         else {
             println!("ERROR: ATTEMPT TO SET ROM/STACK TO 0x{:02x} AT 0x{:04x}!", val, addr);
@@ -431,7 +435,7 @@ mod tests {
 
     #[test]
     fn test_add() {
-        let mut memory = MEM::new([0u8; 0xFF]);
+        let mut memory = MEM::new([0u8; 0x100]);
         memory.setrange(0xFFFC, &vec![0x00, 0xFF], true);
         memory.setrange(0xFF00, &vec![
             0xA9, 0x03, //LDA #$03
@@ -447,7 +451,7 @@ mod tests {
 
     #[test]
     fn test_add_carry() {
-        let mut memory = MEM::new([0u8; 0xFF]);
+        let mut memory = MEM::new([0u8; 0x100]);
         memory.setrange(0xFFFC, &vec![0x00, 0xFF], true);
         memory.setrange(0xFF00, &vec![
             0xA9, 0xFF, //LDA #$FF
@@ -467,7 +471,7 @@ mod tests {
     #[test]
     fn test_indirect_jump() {
         //TODO: FIX THIS
-        let mut memory = MEM::new([0u8; 0xFF]);
+        let mut memory = MEM::new([0u8; 0x100]);
         memory.setrange(0xFFFC, &vec![0x00, 0xFF], true);
         memory.setrange(0xFF00, &vec![
             0x6C, 0xFF, 0x69, // jmp ($FF69)
