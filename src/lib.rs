@@ -213,12 +213,12 @@ impl CPU {
             }
 
             0x6C => { //JMP (a)
-                let addr1 = self.get_next(mem);
-                let addr2 = self.get_next(mem);
+                let mut addr1 = self.get_next(mem);
+                let mut addr2 = self.get_next(mem);
                 self.pc = addr1 as u16 + (addr2 as u16)*0x100;
 
-                let addr1 = self.get_next(mem);
-                let addr2 = self.get_next(mem);
+                addr1 = self.get_next(mem);
+                addr2 = self.get_next(mem);
                 self.pc = addr1 as u16 + (addr2 as u16)*0x100;
             }
 
@@ -436,7 +436,7 @@ mod tests {
     #[test]
     fn test_add() {
         let mut memory = MEM::new([0u8; 0x100]);
-        memory.setrange(0xFFFC, &vec![0x00, 0xFF], true);
+        memory.setrange(0xFFFE, &vec![0x00, 0xFF], true);
         memory.setrange(0xFF00, &vec![
             0xA9, 0x03, //LDA #$03
             0x69, 0x07, //ADC #$04
@@ -452,7 +452,7 @@ mod tests {
     #[test]
     fn test_add_carry() {
         let mut memory = MEM::new([0u8; 0x100]);
-        memory.setrange(0xFFFC, &vec![0x00, 0xFF], true);
+        memory.setrange(0xFFFE, &vec![0x00, 0xFF], true);
         memory.setrange(0xFF00, &vec![
             0xA9, 0xFF, //LDA #$FF
             0x69, 0x02, //ADC #$02
@@ -472,16 +472,16 @@ mod tests {
     fn test_indirect_jump() {
         //TODO: FIX THIS
         let mut memory = MEM::new([0u8; 0x100]);
-        memory.setrange(0xFFFC, &vec![0x00, 0xFF], true);
+        memory.setrange(0xFFFE, &vec![0x00, 0xFF], true);
         memory.setrange(0xFF00, &vec![
             0x6C, 0xFF, 0x69, // jmp ($FF69)
         ], true);
-        memory.setrange(0xFF69, &vec![
+        memory.setrange(0x69FF, &vec![
             0xAA, 0xFF, // $FFAA
-        ], true);
+        ], false);
         memory.setrange(0xFFAA, &vec![
             0xA9, 0x03, //LDA #$03
-            0x69, 0x07, //ADC #$04
+            0x69, 0x07, //ADC #$07
             0x85, 0xA3, //STA $A3
         ], true);
 

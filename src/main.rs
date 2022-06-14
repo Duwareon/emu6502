@@ -9,7 +9,9 @@ use std::fs::File;
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let romfile = load_rom(&args[0]);
+    // println!("{:?}", args);
+
+    let romfile = load_rom(&args[1]);
     let mut rom = [0u8; 0x100];
 
     for i in romfile {
