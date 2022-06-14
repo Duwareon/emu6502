@@ -10,15 +10,15 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let romfile = load_rom(&args[0]);
-    let mut ROM = [0u8; 0x100];
+    let mut rom = [0u8; 0x100];
 
     for i in romfile {
-        for j in 0..(ROM.len()){
-            ROM[j]=i[j];
+        for j in 0..(rom.len()){
+            rom[j]=i[j];
         }
     }
 
-    let mut memory = MEM::new(ROM);
+    let mut memory = MEM::new(rom);
     //memory.set(0xFFFF, 0xFF, true);
     let mut cpu = CPU::new(&mut memory);
 
@@ -29,12 +29,14 @@ fn main() {
 }
 
 pub fn load_rom(path: &String) -> Result<[u8; 0x100], Error> {
-    let mut f = File::open("C:\\Users\\trenton\\Documents\\code\\aaa\\emu6502\\testprogram.sfot")?; //File::open(path)?;
+    let f = File::open(path)?;
     let mut reader = BufReader::new(f);
     let mut buffer1 = Vec::new();
     let mut buffer = [0u8; 0x100];
 
-    reader.read_to_end(&mut buffer1);
+    if reader.read_to_end(&mut buffer1).is_err(){
+        println!("Couldn't read file!")
+    }
     for i in 0..buffer.len() {
         buffer[i] = buffer1[i];
     }

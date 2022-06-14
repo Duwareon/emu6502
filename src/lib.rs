@@ -395,15 +395,15 @@ pub struct MEM {
 }
 
 impl MEM {
-    pub fn new(ROM: [u8; 0x100]) -> MEM {
+    pub fn new(rom: [u8; 0x100]) -> MEM {
         let mut newmem = MEM {ram: [0u8; 0xFFFF+1]};
-        newmem.init(ROM);
+        newmem.init(rom);
         return newmem;
     }
 
-    pub fn init(&mut self, ROM: [u8; 0x100]) {
+    pub fn init(&mut self, rom: [u8; 0x100]) {
         self.ram = [0; 0xFFFF+1];
-        self.setrange(0xFF00, &ROM.to_vec(), true)
+        self.setrange(0xFF00, &rom.to_vec(), true)
     }
 
     pub fn get(&mut self, addr: u16) -> u8 {
