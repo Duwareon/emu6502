@@ -12,7 +12,7 @@ fn main() {
     // println!("{:?}", args);
     let path = &args[1];
     let romfile = load_rom(path);
-    let mut rom = [0u8; 0x100];
+    let mut rom = [0u8; 0x10000];
 
     for i in romfile {
         for j in 0..(rom.len()){
@@ -21,13 +21,12 @@ fn main() {
     }
 
     let mut memory = MEM::new(rom);
-    //memory.set(0xFFFF, 0xFF, true);
     let mut cpu = CPU::new(&mut memory);
 
     cpu.fexec(&mut memory);
 }
 
-pub fn load_rom(path: &String) -> Result<[u8; 0x100], Error> {
+pub fn load_rom(path: &String) -> Result<[u8; 0x10000], Error> {
     let f = File::open(path);
     if f.is_err(){
         panic!("ERROR INTAKING FILE")
@@ -35,7 +34,7 @@ pub fn load_rom(path: &String) -> Result<[u8; 0x100], Error> {
     let f = f?;
     let mut reader = BufReader::new(f);
     let mut buffer1 = Vec::new();
-    let mut buffer = [0u8; 0x100];
+    let mut buffer = [0u8; 0x10000];
 
     if reader.read_to_end(&mut buffer1).is_err(){
         println!("Couldn't read file!")

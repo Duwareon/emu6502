@@ -69,7 +69,7 @@ pub struct CPU {
 impl CPU {
     #![allow(dead_code)]
     pub fn reset(&mut self, mem: &mut MEM) {
-        self.pc = mem.get(0xFFFE) as u16 + (mem.get(0xFFFF) as u16)*0x100;
+        self.pc = mem.get(0xFFFC) as u16 + (mem.get(0xFFFD) as u16)*0x100;
         self.sp = 0xFD;
         self.sr = 0b00100000;
         self.a = 0;
@@ -114,15 +114,73 @@ impl CPU {
         }
     }
 
+    pub fn interrupt(&mut self, mem: &mut MEM, interrupttype: &str) {
+        match interrupttype{
+            "BRK" => {
+                let msb = ((self.pc<<8)/0x100) as u8;
+                let lsb = (self.pc>>8) as u8;
+
+                self.push(mem, msb);
+                self.push(mem, lsb);
+                self.push(mem, self.sr);
+
+                self.sr.set_bit(2);
+
+                //println!("BRK AT {:02x}{:02x}", msb, lsb-1);
+                self.pc = mem.get(0xFFFE) as u16 + (mem.get(0xFFFF) as u16)*100;
+            }
+
+            "IRQ" => {
+                let msb = ((self.pc<<8)/0x100) as u8;
+                let lsb = (self.pc>>8) as u8;
+
+                self.push(mem, msb);
+                self.push(mem, lsb);
+                self.push(mem, self.sr);
+
+                println!("IRQ AT {:02x}{:02x}", msb, lsb-1);
+                self.pc = mem.get(0xFFFE) as u16 + (mem.get(0xFFFF) as u16)*100;
+            }
+
+            "NMI" => {
+                let msb = ((self.pc<<8)/0x100) as u8;
+                let lsb = (self.pc>>8) as u8;
+
+                self.push(mem, msb);
+                self.push(mem, lsb);
+                self.push(mem, self.sr);
+
+                println!("NMI AT {:02x}{:02x}", msb, lsb-1);
+                self.pc = mem.get(0xFFFA) as u16 + (mem.get(0xFFFB) as u16)*100;
+            }
+
+            "RESET" => {
+                let msb = ((self.pc<<8)/0x100) as u8;
+                let lsb = (self.pc>>8) as u8;
+                println!("NMI AT {:02x}{:02x}", msb, lsb-1);
+                self.pc = mem.get(0xFFFC) as u16 + (mem.get(0xFFFD) as u16)*100;
+            }
+
+            _ => {
+                println!("ERROR, INVALID INTERRUPT OF TYPE {}", interrupttype)
+            }
+        }
+    }
+
     pub fn exec(&mut self, mem: &mut MEM) {
         let loc = self.pc;
         let inst = self.get_next(mem);
         
         match inst {
             0x00 => { //BRK
+                self.interrupt(mem, "BRK");
+            }
+            
+            0x02 => { //EXIT (unnofficial)
                 exit(0);
             }
-            0x01 => { //PRN
+
+            0x03 => { //PRINT (unnofficial)
                 let addr1 = self.get_next(mem) as u16;
                 let addr2 = self.get_next(mem) as u16;
                 let val = mem.get(addr1 + addr2*0x100);
@@ -164,13 +222,6 @@ impl CPU {
 
             0x48 => { //PHA
                 self.push(mem, self.a as u8);
-
-                if self.a == 0 {
-                    self.sr.set_bit(1);
-                }
-                else if self.a < 0 {
-                    self.sr.set_bit(7);
-                }
             }
 
             0x4C => { //JMP a
@@ -302,6 +353,13 @@ impl CPU {
                 }
             }
 
+            0x8D => { //STA a
+                let addr1 = self.get_next(mem) as u16;
+                let addr2 = self.get_next(mem) as u16;
+
+                mem.set(addr1 + addr2*100, self.a as u8, false);
+            }
+
             0x98 => { //TYA
                 self.a = self.y;
 
@@ -410,20 +468,20 @@ impl CPU {
 }
 
 pub struct MEM {
-    ram: [u8; 0xFFFF+1], //$0000 to $00FF is ZP, $0100 to $01FF is stack, $0200 to $FEFF is general purpose, $FF01 to $FFFF is ROM.
+    ram: [u8; 0x10000], //$0000 to $00FF is ZP, $0100 to $01FF is stack, $0200 to $FEFF is general purpose, $FF01 to $FFFF is ROM.
     //The last two bytes are a word that points to the start of the program
 }
 
 impl MEM {
-    pub fn new(rom: [u8; 0x100]) -> MEM {
-        let mut newmem = MEM {ram: [0u8; 0xFFFF+1]};
+    pub fn new(rom: [u8; 0x10000]) -> MEM {
+        let mut newmem = MEM {ram: [0u8; 0x10000]};
         newmem.init(rom);
         return newmem;
     }
 
-    pub fn init(&mut self, rom: [u8; 0x100]) {
-        self.ram = [0; 0xFFFF+1];
-        self.setrange(0xFF00, &rom.to_vec(), true)
+    pub fn init(&mut self, rom: [u8; 0x10000]) {
+        self.ram = [0; 0x10000];
+        self.setrange(0x0000, &rom.to_vec(), true)
     }
 
     pub fn get(&mut self, addr: u16) -> u8 {
@@ -443,8 +501,8 @@ impl MEM {
     }
 
     pub fn setrange(&mut self, addr: u16, vals: &Vec<u8>, rom: bool) {
-        for (i, v) in vals.iter().enumerate() {
-            self.set(addr + (i as u16), *v, rom);
+        for i in 0..vals.len() {
+            self.set(addr + (i as u16), vals[i], rom)
         }
     }
 }
@@ -455,7 +513,7 @@ mod tests {
 
     #[test]
     fn test_add() {
-        let mut memory = MEM::new([0u8; 0x100]);
+        let mut memory = MEM::new([0u8; 0x10000]);
         memory.setrange(0xFFFE, &vec![0x00, 0xFF], true);
         memory.setrange(0xFF00, &vec![
             0xA9, 0x03, //LDA #$03
@@ -471,7 +529,7 @@ mod tests {
 
     #[test]
     fn test_add_carry() {
-        let mut memory = MEM::new([0u8; 0x100]);
+        let mut memory = MEM::new([0u8; 0x10000]);
         memory.setrange(0xFFFE, &vec![0x00, 0xFF], true);
         memory.setrange(0xFF00, &vec![
             0xA9, 0xFF, //LDA #$FF
@@ -491,7 +549,7 @@ mod tests {
     #[test]
     fn test_indirect_jump() {
         //TODO: FIX THIS
-        let mut memory = MEM::new([0u8; 0x100]);
+        let mut memory = MEM::new([0u8; 0x10000]);
         memory.setrange(0xFFFE, &vec![0x00, 0xFF], true);
         memory.setrange(0xFF00, &vec![
             0x6C, 0xFF, 0x69, // jmp ($FF69)
