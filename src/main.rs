@@ -12,8 +12,7 @@ fn main() {
 
     // println!("{:?}", args);
     if args.len() < 2 {
-        println!("Please specify what file to run.");
-        exit(1);
+        panic!("Please specify what file to run.");
     }
     let path = &args[1];
     let romfile = load_rom(path);
