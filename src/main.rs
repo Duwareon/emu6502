@@ -5,7 +5,6 @@ use std::io::Error;
 use std::io::Read;
 use std::io::BufReader;
 use std::fs::File;
-use std::process::exit;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
