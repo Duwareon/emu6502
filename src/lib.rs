@@ -146,7 +146,7 @@ impl CPU {
                 self.push(mem, lsb);
                 self.push(mem, self.sr);
 
-                println!("IRQ AT {:02x}{:02x}", msb, lsb-1);
+                //println!("IRQ AT {:02x}{:02x}", msb, lsb-1);
                 self.pc = mem.get_word(0xFFFE);
             }
 
@@ -158,19 +158,19 @@ impl CPU {
                 self.push(mem, lsb);
                 self.push(mem, self.sr);
 
-                println!("NMI AT {:02x}{:02x}", msb, lsb-1);
+                //println!("NMI AT {:02x}{:02x}", msb, lsb-1);
                 self.pc = mem.get_word(0xFFFA);
             }
 
             "RESET" => {
                 let msb = ((self.pc<<8)/0x100) as u8;
                 let lsb = (self.pc>>8) as u8;
-                println!("NMI AT {:02x}{:02x}", msb, lsb-1);
+                //println!("NMI AT {:02x}{:02x}", msb, lsb-1);
                 self.pc = mem.get_word(0xFFFC);
             }
 
             _ => {
-                println!("ERROR, INVALID INTERRUPT OF TYPE {}", interrupttype)
+                println!("NONFATAL ERROR: INVALID INTERRUPT OF TYPE {}", interrupttype)
             }
         }
     }
@@ -461,7 +461,7 @@ impl CPU {
             }
 
             _ => { //UNRECOGNIZED
-                println!("BAD OPCODE: 0x{:02x}, ADDR: 0x{:04x}", inst, loc)
+                println!("NONFATAL ERROR: BAD OPCODE 0x{:02x} AT ADDR: 0x{:04x}", inst, loc)
             }
         }
     }
@@ -501,7 +501,7 @@ impl MEM {
             // println!("SET 0x{:04x} TO 0x{:02x}", addr, val);
         }
         else {
-            println!("ERROR: ATTEMPT TO SET ROM/STACK TO 0x{:02x} AT 0x{:04x}!", val, addr);
+            println!("NONFATAL ERROR: ATTEMPT TO SET ROM/STACK TO 0x{:02x} AT 0x{:04x}!", val, addr);
         }
     }
 

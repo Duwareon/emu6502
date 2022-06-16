@@ -40,7 +40,7 @@ pub fn load_rom(path: &String) -> Result<[u8; 0x10000], Error> {
     let mut buffer = [0u8; 0x10000];
 
     if reader.read_to_end(&mut buffer1).is_err(){
-        println!("Couldn't read file!")
+        panic!("COULDN'T READ FILE!")
     }
     for i in 0..buffer.len() {
         buffer[i] = buffer1[i];
