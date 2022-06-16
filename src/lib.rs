@@ -69,7 +69,7 @@ pub struct CPU {
 impl CPU {
     #![allow(dead_code)]
     pub fn reset(&mut self, mem: &mut MEM) {
-        self.pc = mem.get(0xFFFC) as u16 + (mem.get(0xFFFD) as u16)*0x100;
+        self.pc = mem.get_word(0xFFFC);
         self.sp = 0xFD;
         self.sr = 0b00100000;
         self.a = 0;
@@ -101,6 +101,14 @@ impl CPU {
         return data;
     }
 
+    
+
+    fn get_next_word(&mut self, mem: &mut MEM) -> u16 {
+        let data = mem.get_word(self.pc as u16);
+        self.pc += 2;
+        return data;
+    }
+
     pub fn lexec(&mut self, mem: &mut MEM, mut cycles: u32) {
         while cycles > 0 {
             self.exec(mem);
@@ -127,7 +135,7 @@ impl CPU {
                 self.sr.set_bit(2);
 
                 //println!("BRK AT {:02x}{:02x}", msb, lsb-1);
-                self.pc = (mem.get(0xFFFE) as u16) + ((mem.get(0xFFFF) as u16)*0x100);
+                self.pc = mem.get_word(0xFFFE);
             }
 
             "IRQ" => {
@@ -139,7 +147,7 @@ impl CPU {
                 self.push(mem, self.sr);
 
                 println!("IRQ AT {:02x}{:02x}", msb, lsb-1);
-                self.pc = mem.get(0xFFFE) as u16 + (mem.get(0xFFFF) as u16)*0x100;
+                self.pc = mem.get_word(0xFFFE);
             }
 
             "NMI" => {
@@ -151,14 +159,14 @@ impl CPU {
                 self.push(mem, self.sr);
 
                 println!("NMI AT {:02x}{:02x}", msb, lsb-1);
-                self.pc = mem.get(0xFFFA) as u16 + (mem.get(0xFFFB) as u16)*0x100;
+                self.pc = mem.get_word(0xFFFA);
             }
 
             "RESET" => {
                 let msb = ((self.pc<<8)/0x100) as u8;
                 let lsb = (self.pc>>8) as u8;
                 println!("NMI AT {:02x}{:02x}", msb, lsb-1);
-                self.pc = mem.get(0xFFFC) as u16 + (mem.get(0xFFFD) as u16)*0x100;
+                self.pc = mem.get_word(0xFFFC);
             }
 
             _ => {
@@ -181,9 +189,8 @@ impl CPU {
             }
 
             0x03 => { //PRINT (unnofficial)
-                let addr1 = self.get_next(mem) as u16;
-                let addr2 = self.get_next(mem) as u16;
-                let val = mem.get(addr1 + addr2*0x100);
+                let addr = self.get_next_word(mem) as u16;
+                let val = mem.get(addr);
                 println!("{:02x}", val);
             }
 
@@ -225,9 +232,8 @@ impl CPU {
             }
 
             0x4C => { //JMP a
-                let addr1 = self.get_next(mem);
-                let addr2 = self.get_next(mem);
-                self.pc = addr1 as u16 + (addr2 as u16)*0x100;
+                let addr = self.get_next_word(mem);
+                self.pc = addr;
             }
 
             0x58 => { //CLI
@@ -284,19 +290,13 @@ impl CPU {
             }
 
             0x6C => { //JMP (a)
-                let mut addr1 = self.get_next(mem);
-                let mut addr2 = self.get_next(mem);
-                self.pc = addr1 as u16 + (addr2 as u16)*0x100;
-
-                addr1 = self.get_next(mem);
-                addr2 = self.get_next(mem);
-                self.pc = addr1 as u16 + (addr2 as u16)*0x100;
+                self.pc = self.get_next_word(mem);
+                self.pc = self.get_next_word(mem);
             }
 
             0x6D => { //ADC a
-                let addr1 = self.get_next(mem);
-                let addr2 = self.get_next(mem);
-                let result = self.a + (mem.get(addr1 as u16 + (addr2 as u16)*0x100)) as i8;
+                let addr = self.get_next_word(mem);
+                let result = self.a + mem.get(addr) as i8;
 
                 if result.get_bit(8) {
                     self.sr = self.sr.set_bit(0);
@@ -490,6 +490,11 @@ impl MEM {
         return val;
     }
 
+    pub fn get_word(&mut self, addr: u16) -> u16 {
+        let val = self.ram[addr as usize] as u16 + (self.ram[(addr+1 as u16) as usize] as u16)*0x100;
+        return val;
+    }
+
     pub fn set(&mut self, addr: u16, val: u8, rom: bool) {
         if ((addr < 0xff00) & (addr < 0xff || addr > 0x1ff)) || rom {
             self.ram[addr as usize] = val;
@@ -514,7 +519,7 @@ mod tests {
     #[test]
     fn test_add() {
         let mut memory = MEM::new([0u8; 0x10000]);
-        memory.setrange(0xFFFE, &vec![0x00, 0xFF], true);
+        memory.setrange(0xFFFC, &vec![0x00, 0xFF], true);
         memory.setrange(0xFF00, &vec![
             0xA9, 0x03, //LDA #$03
             0x69, 0x07, //ADC #$04
@@ -530,7 +535,7 @@ mod tests {
     #[test]
     fn test_add_carry() {
         let mut memory = MEM::new([0u8; 0x10000]);
-        memory.setrange(0xFFFE, &vec![0x00, 0xFF], true);
+        memory.setrange(0xFFFC, &vec![0x00, 0xFF], true);
         memory.setrange(0xFF00, &vec![
             0xA9, 0xFF, //LDA #$FF
             0x69, 0x02, //ADC #$02
@@ -550,7 +555,7 @@ mod tests {
     fn test_indirect_jump() {
         //TODO: FIX THIS
         let mut memory = MEM::new([0u8; 0x10000]);
-        memory.setrange(0xFFFE, &vec![0x00, 0xFF], true);
+        memory.setrange(0xFFFC, &vec![0x00, 0xFF], true);
         memory.setrange(0xFF00, &vec![
             0x6C, 0xFF, 0x69, // jmp ($FF69)
         ], true);
