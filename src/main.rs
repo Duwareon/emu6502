@@ -5,11 +5,16 @@ use std::io::Error;
 use std::io::Read;
 use std::io::BufReader;
 use std::fs::File;
+use std::process::exit;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
 
     // println!("{:?}", args);
+    if args.len() < 2 {
+        println!("Please specify what file to run.");
+        exit(1);
+    }
     let path = &args[1];
     let romfile = load_rom(path);
     let mut rom = [0u8; 0x10000];

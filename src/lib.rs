@@ -127,7 +127,7 @@ impl CPU {
                 self.sr.set_bit(2);
 
                 //println!("BRK AT {:02x}{:02x}", msb, lsb-1);
-                self.pc = mem.get(0xFFFE) as u16 + (mem.get(0xFFFF) as u16)*100;
+                self.pc = (mem.get(0xFFFE) as u16) + ((mem.get(0xFFFF) as u16)*0x100);
             }
 
             "IRQ" => {
@@ -139,7 +139,7 @@ impl CPU {
                 self.push(mem, self.sr);
 
                 println!("IRQ AT {:02x}{:02x}", msb, lsb-1);
-                self.pc = mem.get(0xFFFE) as u16 + (mem.get(0xFFFF) as u16)*100;
+                self.pc = mem.get(0xFFFE) as u16 + (mem.get(0xFFFF) as u16)*0x100;
             }
 
             "NMI" => {
@@ -151,14 +151,14 @@ impl CPU {
                 self.push(mem, self.sr);
 
                 println!("NMI AT {:02x}{:02x}", msb, lsb-1);
-                self.pc = mem.get(0xFFFA) as u16 + (mem.get(0xFFFB) as u16)*100;
+                self.pc = mem.get(0xFFFA) as u16 + (mem.get(0xFFFB) as u16)*0x100;
             }
 
             "RESET" => {
                 let msb = ((self.pc<<8)/0x100) as u8;
                 let lsb = (self.pc>>8) as u8;
                 println!("NMI AT {:02x}{:02x}", msb, lsb-1);
-                self.pc = mem.get(0xFFFC) as u16 + (mem.get(0xFFFD) as u16)*100;
+                self.pc = mem.get(0xFFFC) as u16 + (mem.get(0xFFFD) as u16)*0x100;
             }
 
             _ => {
