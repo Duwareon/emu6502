@@ -1,6 +1,5 @@
 use std::process::exit;
 
-
 pub trait Bit {
     fn get_bit(&self, bit: u8) -> bool;
     fn set_bit(&mut self, bit: u8) -> Self;
@@ -467,7 +466,7 @@ impl CPU {
 }
 
 pub struct MEM {
-    ram: [u8; 0x10000], //$0000 to $00FF is ZP, $0100 to $01FF is stack, $0200 to $FEFF is general purpose, $FF01 to $FFFF is ROM.
+    ram: [u8; 0x10000], //$0000 to $00FF is ZP, $0100 to $01FF is stack, $0200 to $FEFF is general purpose, $E000 to $FFFF is ROM.
     //The last two bytes are a word that points to the start of the program
 }
 
@@ -497,7 +496,8 @@ impl MEM {
     }
 
     pub fn set(&mut self, addr: u16, val: u8, rom: bool) {
-        if ((addr < 0xff00) & (addr < 0xff || addr > 0x1ff)) || rom {
+        // If the selected address isn't inside of ROM or stack memory, or we're authorized to write to ROM, write.
+        if ((addr < 0xE000) & (addr < 0xFF || addr > 0x1FF)) || rom {
             self.ram[addr as usize] = val;
             // println!("SET 0x{:04x} TO 0x{:02x}", addr, val);
         }
